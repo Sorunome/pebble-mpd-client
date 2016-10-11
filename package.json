@@ -2,13 +2,21 @@
 	"name": "pebble-mpd-client",
 	"author": "Sorunome",
 	"version": "0.0.0",
-	"keywords": ["mpd","music"],
+	"keywords": [
+		"mpd",
+		"music"
+	],
 	"private": true,
-	"dependencies": {},
+	"dependencies": {
+		"pebble-clay": "^1.0.2"
+	},
 	"pebble": {
 		"displayName": "MPD Client",
 		"uuid": "40bd2917-1f73-462c-b428-147ba02cb9d7",
 		"sdkVersion": "3",
+		"capabilities": [
+			"configurable"
+		],
 		"enableMultiJS": true,
 		"targetPlatforms": [
 			"aplite",
@@ -20,7 +28,8 @@
 			"watchface": false
 		},
 		"messageKeys": [
-			"dummy"
+			"JSReady",
+			"state"
 		],
 		"resources": {
 			"media": []

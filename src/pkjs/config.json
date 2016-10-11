@@ -1,0 +1,46 @@
+[
+	{
+		"type": "heading",
+		"defaultValue": "MPD Server Configuration"
+	},
+	{
+		"type": "text",
+		"defaultValue": "Here you have to set the settings of the MPD server you want to control"
+	},
+	{
+		"type": "section",
+		"items": [
+			{
+				"type": "input",
+				"messageKey": "host",
+				"defaultValue": "",
+				"label": "MPD Server",
+				"attributes": {
+					"placeholder": "eg: 192.168.1.42"
+				}
+			},
+			{
+				"type": "input",
+				"messageKey": "port",
+				"defaultValue": 6600,
+				"label": "Port",
+				"attributes": {
+					"type": "number"
+				}
+			},
+			{
+				"type": "input",
+				"messageKey": "passwd",
+				"defaultValue": "",
+				"label": "Password",
+				"attributes": {
+					"type": "password"
+				}
+			}
+		]
+	},
+	{
+		"type": "submit",
+		"defaultValue": "Save Settings"
+	}
+]
