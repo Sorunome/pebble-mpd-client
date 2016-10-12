@@ -29,10 +29,53 @@
 		},
 		"messageKeys": [
 			"JSReady",
-			"state"
+			"state",
+			"artist",
+			"title"
 		],
 		"resources": {
-			"media": []
+			"media": [
+				{
+					"type": "bitmap",
+					"name": "PLAY_BUTTON",
+					"file": "play_button.png"
+				},
+				{
+					"type": "bitmap",
+					"name": "PREVIOUS_BUTTON",
+					"file": "previous_button.png"
+				},
+				{
+					"type": "bitmap",
+					"name": "NEXT_BUTTON",
+					"file": "next_button.png"
+				},
+				{
+					"type": "bitmap",
+					"name": "MORE_BUTTON",
+					"file": "more_button.png"
+				},
+				{
+					"type": "bitmap",
+					"name": "PAUSE_BUTTON",
+					"file": "pause_button.png"
+				},
+				{
+					"type": "bitmap",
+					"name": "STOP_BUTTON",
+					"file": "stop_button.png"
+				},
+				{
+					"type": "bitmap",
+					"name": "VOL_DOWN_BUTTON",
+					"file": "vol_down_button.png"
+				},
+				{
+					"type": "bitmap",
+					"name": "VOL_UP_BUTTON",
+					"file": "vol_up_button.png"
+				}
+			]
 		}
 	}
 }

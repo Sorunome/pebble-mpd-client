@@ -12,16 +12,43 @@ mpdState = {
 	playlist:0,
 	playlistlength:0,
 	xfade:0,
-	state:'stop',
+	state:'loading',
 	song:0,
-	songid:0
+	songid:0,
+	Time:0,
+	Artist:'',
+	Title:'',
+	Album:'',
+	file:''
 };
+
 
 function dumpMpdState(){
 	for(var k in mpdState){
 		console.log(k+': '+mpdState[k]);
 	}
 }
+
+function setVol(d){
+	d += mpdState.volume;
+	if(d < 0){
+		return 0;
+	}
+	if(d > 100){
+		return 100;
+	}
+	return d;
+}
+
+function isSameState(state){
+	for(var k in state){
+		if(state[k] != mpdState[k]){
+			return false;
+		}
+	}
+	return true;
+}
+
 function mpdRequest(commands,callback){
 	var config = JSON.parse(localStorage.getItem('clay-settings')),
 		http = new XMLHttpRequest(),
@@ -29,7 +56,12 @@ function mpdRequest(commands,callback){
 			if(http.readyState >= 3){
 				var s = http.response?http.response:http.responseText;
 				if(s){
-					var lines = s.split('\n');
+					var lines = s.split('\n'),
+						oldMpdState = JSON.parse(JSON.stringify(mpdState)); // we need to clone it
+					console.log(JSON.stringify(lines));
+					mpdState.Artist = '';
+					mpdState.Title = '';
+					mpdState.Album = '';
 					for(var i = 0;i < lines.length;i++){
 						if(lines[i] == 'OK'){
 							http.abort();
@@ -40,7 +72,28 @@ function mpdRequest(commands,callback){
 							mpdState[matches[1]] = mpdState[matches[1]].constructor(matches[2]);
 						}
 					}
-					dumpMpdState();
+					if(!isSameState(oldMpdState)){
+						console.log('sending out new state...');
+						console.log(JSON.stringify(oldMpdState));
+						dumpMpdState();
+						var title = mpdState.Title,
+							artist = mpdState.Artist;
+						if(!title){
+							title = mpdState.file.split('/');
+							title = title[title.length-1].split('.')[0];
+						}
+						if(mpdState.Album){
+							title += ' – '+mpdState.Album;
+						}
+						if(!artist){
+							artist = 'Unkown';
+						}
+						Pebble.sendAppMessage({
+							state:['play','pause','stop'].indexOf(mpdState.state),
+							artist:artist.substring(0,20),
+							title:title.substring(0,30)
+						});
+					}
 					if(callback){
 						callback();
 					}
@@ -54,26 +107,23 @@ function mpdRequest(commands,callback){
 	commands.unshift('password '+config.passwd);
 	commands.unshift('command_list_begin');
 	commands.push('status');
+	commands.push('currentsong');
 	commands.push('command_list_end');
-	console.log(commands.join('\n')+'\n');
+	
 	http.send(commands.join('\n')+'\n');
 	http.timeout = 2000;
-	console.log('sent!');
 };
 
+
+function getInfo(){
+	mpdRequest([]);
+}
 Pebble.addEventListener('ready',function(){
 	console.log('js ready, i guess');
 	Pebble.sendAppMessage({JSReady:1});
+	getInfo();
+	setInterval(getInfo,30000);
 });
-function getInfo(){
-	mpdRequest([],function(){
-		console.log(mpdState.state);
-		console.log(['play','pause','stop'].indexOf(mpdState.state));
-		Pebble.sendAppMessage({
-			state:['play','pause','stop'].indexOf(mpdState.state)
-		});
-	});
-}
 Pebble.addEventListener('showConfiguration',function(e){
 	Pebble.openURL(clay.generateUrl());
 });
@@ -82,7 +132,7 @@ Pebble.addEventListener('webviewclosed',function(e){
 	if(e && !e.response){
 		return;
 	}
-	// flatten the settings for 
+	// flatten the settings for storage
 	var settingsStorage = {},
 		settings = JSON.parse(e.response);
 	Object.keys(settings).forEach(function(key) {
@@ -105,6 +155,18 @@ Pebble.addEventListener('appmessage',function(e){
 			break;
 		case 2: // stop
 			mpdRequest(['stop']);
+			break;
+		case 3: // previous
+			mpdRequest(['previous']);
+			break;
+		case 4: // next
+			mpdRequest(['next'])
+			break;
+		case 5: // vol_up
+			mpdRequest(['setvol '+setVol(5)]);
+			break;
+		case 6: // vol_down
+			mpdRequest(['setvol '+setVol(-5)]);
 			break;
 		case 255: // getinfo
 			getInfo();
