@@ -31,7 +31,9 @@
 			"JSReady",
 			"state",
 			"artist",
-			"title"
+			"title",
+			"time",
+			"pos"
 		],
 		"resources": {
 			"media": [

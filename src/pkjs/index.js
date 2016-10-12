@@ -1,6 +1,7 @@
 var Clay = require('pebble-clay'),
 	clayConfig = require('./config'),
-	clay = new Clay(clayConfig,null,{autoHandleEvents:false});
+	clay = new Clay(clayConfig,null,{autoHandleEvents:false}),
+	mpdUpdateTime = 5;
 
 console.log();
 mpdState = {
@@ -15,7 +16,7 @@ mpdState = {
 	state:'loading',
 	song:0,
 	songid:0,
-	Time:0,
+	time:'',
 	Artist:'',
 	Title:'',
 	Album:'',
@@ -42,7 +43,11 @@ function setVol(d){
 
 function isSameState(state){
 	for(var k in state){
-		if(state[k] != mpdState[k]){
+		if(k == 'time'){
+			if(mpdState.state == 'play' && parseInt(state.time.split(':')[0])+mpdUpdateTime != parseInt(mpdState.time.split(':')[0])){
+				return false;
+			}
+		}else if(state[k] != mpdState[k]){
 			return false;
 		}
 	}
@@ -91,7 +96,9 @@ function mpdRequest(commands,callback){
 						Pebble.sendAppMessage({
 							state:['play','pause','stop'].indexOf(mpdState.state),
 							artist:artist.substring(0,20),
-							title:title.substring(0,30)
+							title:title.substring(0,30),
+							time:parseInt(mpdState.time.split(':')[1]),
+							pos:parseInt(mpdState.time.split(':')[0])
 						});
 					}
 					if(callback){
@@ -104,7 +111,9 @@ function mpdRequest(commands,callback){
 	http.setRequestHeader('Content-Type','text/plain');
 	http.onreadystatechange = handleReply;
 	http.ontimeout = handleReply;
-	commands.unshift('password '+config.passwd);
+	if(config.passwd){
+		commands.unshift('password '+config.passwd);
+	}
 	commands.unshift('command_list_begin');
 	commands.push('status');
 	commands.push('currentsong');
@@ -122,7 +131,7 @@ Pebble.addEventListener('ready',function(){
 	console.log('js ready, i guess');
 	Pebble.sendAppMessage({JSReady:1});
 	getInfo();
-	setInterval(getInfo,30000);
+	setInterval(getInfo,mpdUpdateTime*1000);
 });
 Pebble.addEventListener('showConfiguration',function(e){
 	Pebble.openURL(clay.generateUrl());

@@ -20,9 +20,14 @@
 static Window *s_window;
 static TextLayer *s_author_layer;
 static TextLayer *s_title_layer;
+static TextLayer *s_pos_layer;
+static TextLayer *s_time_layer;
+static Layer *s_progress_layer;
 static ActionBarLayer *s_action_bar_layer;
 char artist_buffer[21];
 char title_buffer[31];
+char time_buffer[6];
+char pos_buffer[6];
 
 /*
 static const GPathInfo PLAY_BUTTON = {
@@ -43,6 +48,9 @@ bool pause = true;
 uint8_t state = STATE_PLAY;
 uint8_t menu_state = MENUSTATE_OUTER;
 time_t last_interact_time;
+
+uint16_t song_time = 0;
+uint16_t song_pos = 0;
 
 static bool s_js_ready = false;
 
@@ -86,8 +94,34 @@ static void hard_update(void){
 	sendAction(ACTION_GETINFO);
 }
 
+static void progress_layer_update_proc(Layer* layer, GContext* ctx){
+	GRect bounds = layer_get_bounds(layer);
+	int16_t progress_bar_width = bounds.size.w * song_pos / song_time;
+	
+	graphics_context_set_fill_color(ctx, GColorBlack);
+	graphics_fill_rect(ctx, bounds, 1, GCornersAll);
+	
+	graphics_context_set_fill_color(ctx, GColorRed);
+	graphics_fill_rect(ctx, GRect(bounds.origin.x, bounds.origin.y, progress_bar_width, bounds.size.h), 1, GCornersAll);
+}
+
+static void update_song_pos(void){
+	snprintf(pos_buffer, sizeof(pos_buffer), "%u:%02u", song_pos / 60, song_pos % 60);
+	text_layer_set_text(s_pos_layer, pos_buffer);
+	layer_mark_dirty(s_progress_layer);
+}
+
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed){
 	time_t curtime = time(NULL);
+	
+	if(state == STATE_PLAY){
+		song_pos++;
+		if(song_pos > song_time){
+			sendAction(ACTION_GETINFO);
+		}
+		update_song_pos();
+	}
+	
 	if(menu_state == MENUSTATE_INNER && difftime(curtime,last_interact_time) >= 2){
 		menu_state = MENUSTATE_OUTER;
 		update_action_buttons();
@@ -125,11 +159,26 @@ static void inbox_recieved_callback(DictionaryIterator *iterator, void *context)
 		text_layer_set_text(s_author_layer, artist_buffer);
 	}
 	
-	// chekc for changing title
+	// check for changing title
 	tmp_tuple = dict_find(iterator, MESSAGE_KEY_title);
 	if(tmp_tuple){
 		snprintf(title_buffer, sizeof(title_buffer), "%s", tmp_tuple->value->cstring);
 		text_layer_set_text(s_title_layer, title_buffer);
+	}
+	
+	// check for changing time
+	tmp_tuple = dict_find(iterator, MESSAGE_KEY_time);
+	if(tmp_tuple){
+		song_time = tmp_tuple->value->int16;
+		snprintf(time_buffer, sizeof(time_buffer), "%u:%02u", song_time / 60, song_time % 60);
+		text_layer_set_text(s_time_layer, time_buffer);
+	}
+	
+	// check for changing pos
+	tmp_tuple = dict_find(iterator, MESSAGE_KEY_pos);
+	if(tmp_tuple){
+		song_pos = tmp_tuple->value->int16;
+		update_song_pos();
 	}
 	
 	if(state != STATE_PLAY && menu_state != MENUSTATE_OUTER){
@@ -200,15 +249,6 @@ static void prv_window_load(Window *window) {
 	action_bar_layer_set_click_config_provider(s_action_bar_layer, prv_click_config_provider);
 	update_action_buttons();
 	action_bar_layer_add_to_window(s_action_bar_layer,window);
-
-	s_author_layer = text_layer_create(GRect(12,25,95,20));
-	text_layer_set_background_color(s_author_layer,GColorLightGray);
-	text_layer_set_text_color(s_author_layer,GColorBlack);
-	text_layer_set_text(s_author_layer,"Loading...");
-	text_layer_set_font(s_author_layer,fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
-	text_layer_set_text_alignment(s_author_layer,GTextAlignmentLeft);
-
-	layer_add_child(window_layer,text_layer_get_layer(s_author_layer));
 	
 	s_title_layer = text_layer_create(GRect(12,43,95,52));
 	text_layer_set_background_color(s_title_layer,GColorLightGray);
@@ -216,12 +256,41 @@ static void prv_window_load(Window *window) {
 	text_layer_set_text(s_title_layer,"Loading...");
 	text_layer_set_font(s_title_layer,fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(s_title_layer,GTextAlignmentLeft);
-	
 	layer_add_child(window_layer,text_layer_get_layer(s_title_layer));
 	
+	s_author_layer = text_layer_create(GRect(12,25,95,22));
+	text_layer_set_background_color(s_author_layer,GColorLightGray);
+	text_layer_set_text_color(s_author_layer,GColorBlack);
+	text_layer_set_text(s_author_layer,"");
+	text_layer_set_font(s_author_layer,fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	text_layer_set_text_alignment(s_author_layer,GTextAlignmentLeft);
+	layer_add_child(window_layer,text_layer_get_layer(s_author_layer));
+	
+	s_pos_layer = text_layer_create(GRect(12,102,27,14));
+	text_layer_set_background_color(s_pos_layer,GColorLightGray);
+	text_layer_set_text_color(s_pos_layer,GColorBlack);
+	text_layer_set_text(s_pos_layer,"");
+	text_layer_set_font(s_pos_layer,fonts_get_system_font(FONT_KEY_GOTHIC_14));
+	text_layer_set_text_alignment(s_pos_layer,GTextAlignmentLeft);
+	layer_add_child(window_layer,text_layer_get_layer(s_pos_layer));
+	
+	s_time_layer = text_layer_create(GRect(75,102,27,14));
+	text_layer_set_background_color(s_time_layer,GColorLightGray);
+	text_layer_set_text_color(s_time_layer,GColorBlack);
+	text_layer_set_text(s_time_layer,"");
+	text_layer_set_font(s_time_layer,fonts_get_system_font(FONT_KEY_GOTHIC_14));
+	text_layer_set_text_alignment(s_time_layer,GTextAlignmentRight);
+	layer_add_child(window_layer,text_layer_get_layer(s_time_layer));
+	
+	s_progress_layer = layer_create(GRect(12,120,90,4));
+	layer_set_update_proc(s_progress_layer, progress_layer_update_proc);
+	layer_add_child(window_layer,s_progress_layer);
 }
 
 static void prv_window_unload(Window *window) {
+	layer_destroy(s_progress_layer);
+	text_layer_destroy(s_time_layer);
+	text_layer_destroy(s_pos_layer);
 	text_layer_destroy(s_author_layer);
 	text_layer_destroy(s_title_layer);
 	action_bar_layer_destroy(s_action_bar_layer);
