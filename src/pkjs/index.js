@@ -23,7 +23,6 @@ mpdState = {
 	file:''
 };
 
-
 function dumpMpdState(){
 	for(var k in mpdState){
 		console.log(k+': '+mpdState[k]);
@@ -87,12 +86,13 @@ function mpdRequest(commands,callback){
 							title = mpdState.file.split('/');
 							title = title[title.length-1].split('.')[0];
 						}
-						if(mpdState.Album){
+						if(mpdState.Album && title.length < 28){
 							title += ' – '+mpdState.Album;
 						}
 						if(!artist){
 							artist = 'Unkown';
 						}
+						console.log('title: '+title)
 						Pebble.sendAppMessage({
 							state:['play','pause','stop'].indexOf(mpdState.state),
 							artist:artist.substring(0,20),

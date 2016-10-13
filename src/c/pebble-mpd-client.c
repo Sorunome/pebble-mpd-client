@@ -9,6 +9,7 @@
 #define ACTION_VOL_DOWN 6
 #define ACTION_GETINFO 255
 
+#define STATE_LOADING -1
 #define STATE_PLAY 0
 #define STATE_PAUSE 1
 #define STATE_STOP 2
@@ -22,35 +23,23 @@ static TextLayer *s_author_layer;
 static TextLayer *s_title_layer;
 static TextLayer *s_pos_layer;
 static TextLayer *s_time_layer;
+static TextLayer *s_curtime_layer;
 static Layer *s_progress_layer;
 static ActionBarLayer *s_action_bar_layer;
 char artist_buffer[21];
 char title_buffer[31];
-char time_buffer[6];
-char pos_buffer[6];
+char time_buffer[10];
+char pos_buffer[10];
+char curtime_buffer[6];
 
-/*
-static const GPathInfo PLAY_BUTTON = {
-	.num_points = 3,
-	.points = (GPoint []) {{0,0},{12,8},{0,16}}
-};
-static const GPathInfo FOR_BUTTON = {
-	.num_points = 3,
-	.points = (GPoint []) {{9,0},{0,8},{9,16}}
-};
-static const GPathInfo BACK_BUTTON = {
-	.num_points = 3,
-	.points = (GPoint []) {{0,0},{9,8},{0,16}}
-};
-*/
 
 bool pause = true;
-uint8_t state = STATE_PLAY;
+uint8_t state = STATE_LOADING;
 uint8_t menu_state = MENUSTATE_OUTER;
 time_t last_interact_time;
 
-uint16_t song_time = 0;
-uint16_t song_pos = 0;
+uint32_t song_time = 0;
+uint32_t song_pos = 0;
 
 static bool s_js_ready = false;
 
@@ -88,15 +77,9 @@ static void update_action_buttons(void){
 	}
 }
 
-static void hard_update(void){
-	APP_LOG(APP_LOG_LEVEL_INFO, "Hard updating...");
-	//layer_mark_dirty(s_side_layer);
-	sendAction(ACTION_GETINFO);
-}
-
 static void progress_layer_update_proc(Layer* layer, GContext* ctx){
 	GRect bounds = layer_get_bounds(layer);
-	int16_t progress_bar_width = bounds.size.w * song_pos / song_time;
+	int16_t progress_bar_width = song_pos * bounds.size.w / song_time;
 	
 	graphics_context_set_fill_color(ctx, GColorBlack);
 	graphics_fill_rect(ctx, bounds, 1, GCornersAll);
@@ -105,13 +88,30 @@ static void progress_layer_update_proc(Layer* layer, GContext* ctx){
 	graphics_fill_rect(ctx, GRect(bounds.origin.x, bounds.origin.y, progress_bar_width, bounds.size.h), 1, GCornersAll);
 }
 
+static void get_time_string(char* buffer,uint32_t ts){
+	uint8_t sec = ts % 60;
+	uint8_t min = ts / 60;
+	if(min > 60){
+		uint8_t hour = min / 60;
+		min %= 60;
+		snprintf(buffer, 9, "%u:%02u:%02u", hour, min, sec);
+		return;
+	}
+	snprintf(buffer, 9, "%u:%02u", min, sec);
+}
+
 static void update_song_pos(void){
-	snprintf(pos_buffer, sizeof(pos_buffer), "%u:%02u", song_pos / 60, song_pos % 60);
+	get_time_string(pos_buffer,song_pos);
 	text_layer_set_text(s_pos_layer, pos_buffer);
 	layer_mark_dirty(s_progress_layer);
 }
 
-static void tick_handler(struct tm *tick_time, TimeUnits units_changed){
+static void update_curtime(tm* mTime){
+	snprintf(curtime_buffer, sizeof(curtime_buffer), "%u:%02u", mTime->tm_hour, mTime->tm_min);
+	text_layer_set_text(s_curtime_layer, curtime_buffer);
+}
+
+static void tick_handler(struct tm* mTime, TimeUnits units_changed){
 	time_t curtime = time(NULL);
 	
 	if(state == STATE_PLAY){
@@ -120,6 +120,10 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed){
 			sendAction(ACTION_GETINFO);
 		}
 		update_song_pos();
+	}
+	
+	if(mTime->tm_sec == 0){
+		update_curtime(mTime);
 	}
 	
 	if(menu_state == MENUSTATE_INNER && difftime(curtime,last_interact_time) >= 2){
@@ -164,20 +168,21 @@ static void inbox_recieved_callback(DictionaryIterator *iterator, void *context)
 	if(tmp_tuple){
 		snprintf(title_buffer, sizeof(title_buffer), "%s", tmp_tuple->value->cstring);
 		text_layer_set_text(s_title_layer, title_buffer);
+		APP_LOG(APP_LOG_LEVEL_INFO, "Title: %s",title_buffer);
 	}
 	
 	// check for changing time
 	tmp_tuple = dict_find(iterator, MESSAGE_KEY_time);
 	if(tmp_tuple){
-		song_time = tmp_tuple->value->int16;
-		snprintf(time_buffer, sizeof(time_buffer), "%u:%02u", song_time / 60, song_time % 60);
+		song_time = tmp_tuple->value->int32;
+		get_time_string(time_buffer, song_time);
 		text_layer_set_text(s_time_layer, time_buffer);
 	}
 	
 	// check for changing pos
 	tmp_tuple = dict_find(iterator, MESSAGE_KEY_pos);
 	if(tmp_tuple){
-		song_pos = tmp_tuple->value->int16;
+		song_pos = tmp_tuple->value->int32;
 		update_song_pos();
 	}
 	
@@ -241,7 +246,8 @@ static void prv_window_load(Window *window) {
 	Layer *window_layer = window_get_root_layer(window);
 	//GRect bounds = layer_get_bounds(window_layer);
 	
-	
+	time_t time_value = time(NULL);
+	struct tm* mTime = localtime(&time_value);
 
 	window_set_background_color(window,GColorLightGray);
 
@@ -249,6 +255,14 @@ static void prv_window_load(Window *window) {
 	action_bar_layer_set_click_config_provider(s_action_bar_layer, prv_click_config_provider);
 	update_action_buttons();
 	action_bar_layer_add_to_window(s_action_bar_layer,window);
+	
+	s_curtime_layer = text_layer_create(GRect(0,0,114,14));
+	text_layer_set_background_color(s_curtime_layer,GColorLightGray);
+	text_layer_set_text_color(s_curtime_layer,GColorBlack);
+	update_curtime(mTime);
+	text_layer_set_font(s_curtime_layer,fonts_get_system_font(FONT_KEY_GOTHIC_14));
+	text_layer_set_text_alignment(s_curtime_layer,GTextAlignmentCenter);
+	layer_add_child(window_layer,text_layer_get_layer(s_curtime_layer));
 	
 	s_title_layer = text_layer_create(GRect(12,43,95,52));
 	text_layer_set_background_color(s_title_layer,GColorLightGray);
@@ -266,7 +280,7 @@ static void prv_window_load(Window *window) {
 	text_layer_set_text_alignment(s_author_layer,GTextAlignmentLeft);
 	layer_add_child(window_layer,text_layer_get_layer(s_author_layer));
 	
-	s_pos_layer = text_layer_create(GRect(12,102,27,14));
+	s_pos_layer = text_layer_create(GRect(12,102,49,14));
 	text_layer_set_background_color(s_pos_layer,GColorLightGray);
 	text_layer_set_text_color(s_pos_layer,GColorBlack);
 	text_layer_set_text(s_pos_layer,"");
@@ -274,7 +288,7 @@ static void prv_window_load(Window *window) {
 	text_layer_set_text_alignment(s_pos_layer,GTextAlignmentLeft);
 	layer_add_child(window_layer,text_layer_get_layer(s_pos_layer));
 	
-	s_time_layer = text_layer_create(GRect(75,102,27,14));
+	s_time_layer = text_layer_create(GRect(53,102,49,14));
 	text_layer_set_background_color(s_time_layer,GColorLightGray);
 	text_layer_set_text_color(s_time_layer,GColorBlack);
 	text_layer_set_text(s_time_layer,"");
@@ -293,6 +307,7 @@ static void prv_window_unload(Window *window) {
 	text_layer_destroy(s_pos_layer);
 	text_layer_destroy(s_author_layer);
 	text_layer_destroy(s_title_layer);
+	text_layer_destroy(s_curtime_layer);
 	action_bar_layer_destroy(s_action_bar_layer);
 }
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
