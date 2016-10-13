@@ -1,15 +1,38 @@
 [
 	{
-		"type": "heading",
-		"defaultValue": "MPD Server Configuration"
-	},
-	{
-		"type": "text",
-		"defaultValue": "Here you have to set the settings of the MPD server you want to control"
+		"type": "section",
+		"items": [
+			{
+				"type": "heading",
+				"defaultValue": "App Configuration"
+			},
+			{
+				"type": "text",
+				"defaultValue": "Here you configure how the app behaves"
+			},
+			{
+				"type": "input",
+				"messageKey": "app_timeout",
+				"defaultValue": 120,
+				"label": "App Timeout",
+				"attributes": {
+					"type": "number"
+				},
+				"description": "The time in seconds when the app will auto-exit, zero to disable"
+			}
+		]
 	},
 	{
 		"type": "section",
 		"items": [
+			{
+				"type": "heading",
+				"defaultValue": "MPD Server Configuration"
+			},
+			{
+				"type": "text",
+				"defaultValue": "Here you have to set the settings of the MPD server you want to control"
+			},
 			{
 				"type": "input",
 				"messageKey": "host",

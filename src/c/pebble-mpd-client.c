@@ -41,6 +41,7 @@ time_t last_interact_time;
 
 uint32_t song_time = 0;
 uint32_t song_pos = 0;
+uint16_t app_timeout = 0;
 
 static bool s_js_ready = false;
 
@@ -149,7 +150,7 @@ static void tick_handler(struct tm* mTime, TimeUnits units_changed){
 		update_action_buttons();
 		update_state_image();
 	}
-	if(difftime(curtime,last_interact_time) >= 2*60){ // quit the app after 2 min
+	if(app_timeout && difftime(curtime,last_interact_time) >= app_timeout){ // quit the app after configured time
 		window_stack_pop_all(false);
 	}
 }
@@ -160,15 +161,14 @@ static void inbox_recieved_callback(DictionaryIterator *iterator, void *context)
 	Tuple *tmp_tuple;
 	// check for ready-setting
 	tmp_tuple = dict_find(iterator, MESSAGE_KEY_JSReady);
-	APP_LOG(APP_LOG_LEVEL_INFO, "Ready tuple: %p", tmp_tuple);
 	if(tmp_tuple){
 		s_js_ready = true;
-		APP_LOG(APP_LOG_LEVEL_INFO, "JS is ready!");
+		app_timeout = tmp_tuple->value->int16;
+		APP_LOG(APP_LOG_LEVEL_INFO, "JS is ready! App Timeout: %u", app_timeout);
 	}
 	
 	// check for changing state
 	tmp_tuple = dict_find(iterator, MESSAGE_KEY_state);
-	APP_LOG(APP_LOG_LEVEL_INFO, "Recieved inbox! %p",tmp_tuple);
 	if(tmp_tuple){
 		state = tmp_tuple->value->int8;
 		if(state != STATE_PLAY && menu_state != MENUSTATE_OUTER){
@@ -192,7 +192,6 @@ static void inbox_recieved_callback(DictionaryIterator *iterator, void *context)
 	if(tmp_tuple){
 		snprintf(title_buffer, sizeof(title_buffer), "%s", tmp_tuple->value->cstring);
 		text_layer_set_text(s_title_layer, title_buffer);
-		APP_LOG(APP_LOG_LEVEL_INFO, "Title: %s",title_buffer);
 	}
 	
 	// check for changing time

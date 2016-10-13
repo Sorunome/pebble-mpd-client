@@ -3,7 +3,6 @@ var Clay = require('pebble-clay'),
 	clay = new Clay(clayConfig,null,{autoHandleEvents:false}),
 	mpdUpdateTime = 5;
 
-console.log();
 mpdState = {
 	volume:0,
 	repeat:false,
@@ -22,12 +21,6 @@ mpdState = {
 	Album:'',
 	file:''
 };
-
-function dumpMpdState(){
-	for(var k in mpdState){
-		console.log(k+': '+mpdState[k]);
-	}
-}
 
 function setVol(d){
 	d += mpdState.volume;
@@ -62,7 +55,7 @@ function mpdRequest(commands,callback){
 				if(s){
 					var lines = s.split('\n'),
 						oldMpdState = JSON.parse(JSON.stringify(mpdState)); // we need to clone it
-					console.log(JSON.stringify(lines));
+					
 					mpdState.Artist = '';
 					mpdState.Title = '';
 					mpdState.Album = '';
@@ -78,8 +71,7 @@ function mpdRequest(commands,callback){
 					}
 					if(!isSameState(oldMpdState)){
 						console.log('sending out new state...');
-						console.log(JSON.stringify(oldMpdState));
-						dumpMpdState();
+						
 						var title = mpdState.Title,
 							artist = mpdState.Artist;
 						if(!title){
@@ -92,7 +84,7 @@ function mpdRequest(commands,callback){
 						if(!artist){
 							artist = 'Unkown';
 						}
-						console.log('title: '+title)
+						
 						Pebble.sendAppMessage({
 							state:['play','pause','stop'].indexOf(mpdState.state),
 							artist:artist.substring(0,20),
@@ -128,8 +120,8 @@ function getInfo(){
 	mpdRequest([]);
 }
 Pebble.addEventListener('ready',function(){
-	console.log('js ready, i guess');
-	Pebble.sendAppMessage({JSReady:1});
+	var config = JSON.parse(localStorage.getItem('clay-settings'))
+	Pebble.sendAppMessage({JSReady:config?parseInt(config.app_timeout):120});
 	getInfo();
 	setInterval(getInfo,mpdUpdateTime*1000);
 });
@@ -137,21 +129,21 @@ Pebble.addEventListener('showConfiguration',function(e){
 	Pebble.openURL(clay.generateUrl());
 });
 Pebble.addEventListener('webviewclosed',function(e){
-	console.log('changed config, i guess');
 	if(e && !e.response){
 		return;
 	}
 	// flatten the settings for storage
-	var settingsStorage = {},
+	var config = {},
 		settings = JSON.parse(e.response);
 	Object.keys(settings).forEach(function(key) {
 		if(typeof settings[key] === 'object' && settings[key]){
-			settingsStorage[key] = settings[key].value;
+			config[key] = settings[key].value;
 		}else{
-			settingsStorage[key] = settings[key];
+			config[key] = settings[key];
 		}
 	});
-	localStorage.setItem('clay-settings', JSON.stringify(settingsStorage));
+	Pebble.sendAppMessage({JSReady:parseInt(config.app_timeout)});
+	localStorage.setItem('clay-settings', JSON.stringify(config));
 	getInfo();
 });
 Pebble.addEventListener('appmessage',function(e){
