@@ -19,7 +19,8 @@
 		],
 		"enableMultiJS": true,
 		"targetPlatforms": [
-			"basalt"
+			"basalt",
+			"chalk"
 		],
 		"watchapp": {
 			"watchface": false
