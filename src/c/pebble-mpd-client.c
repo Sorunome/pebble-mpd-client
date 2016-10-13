@@ -91,14 +91,14 @@ static void progress_layer_update_proc(Layer* layer, GContext* ctx){
 
 static void get_time_string(char* buffer,uint32_t ts){
 	uint8_t sec = ts % 60;
-	uint8_t min = ts / 60;
-	if(min > 60){
-		uint8_t hour = min / 60;
+	uint16_t min = ts / 60;
+	if(min >= 60){
+		uint16_t hour = min / 60;
 		min %= 60;
-		snprintf(buffer, 9, "%u:%02u:%02u", hour, min, sec);
+		snprintf(buffer, 10, "%u:%02u:%02u", hour, min, sec);
 		return;
 	}
-	snprintf(buffer, 9, "%u:%02u", min, sec);
+	snprintf(buffer, 10, "%u:%02u", min, sec);
 }
 
 static void update_song_pos(void){
