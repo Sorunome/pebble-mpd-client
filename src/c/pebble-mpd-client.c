@@ -24,6 +24,7 @@ static TextLayer *s_title_layer;
 static TextLayer *s_pos_layer;
 static TextLayer *s_time_layer;
 static TextLayer *s_curtime_layer;
+static BitmapLayer *s_state_layer;
 static Layer *s_progress_layer;
 static ActionBarLayer *s_action_bar_layer;
 char artist_buffer[21];
@@ -34,7 +35,7 @@ char curtime_buffer[6];
 
 
 bool pause = true;
-uint8_t state = STATE_LOADING;
+int8_t state = STATE_LOADING;
 uint8_t menu_state = MENUSTATE_OUTER;
 time_t last_interact_time;
 
@@ -106,6 +107,23 @@ static void update_song_pos(void){
 	layer_mark_dirty(s_progress_layer);
 }
 
+static void update_state_image(void){
+	switch(state){
+		case STATE_LOADING:
+			bitmap_layer_set_bitmap(s_state_layer, gbitmap_create_with_resource(RESOURCE_ID_LOADING_STATE));
+			break;
+		case STATE_PLAY:
+			bitmap_layer_set_bitmap(s_state_layer, gbitmap_create_with_resource(RESOURCE_ID_PLAY_STATE));
+			break;
+		case STATE_PAUSE:
+			bitmap_layer_set_bitmap(s_state_layer, gbitmap_create_with_resource(RESOURCE_ID_PAUSE_STATE));
+			break;
+		case STATE_STOP:
+			bitmap_layer_set_bitmap(s_state_layer, gbitmap_create_with_resource(RESOURCE_ID_STOP_STATE));
+			break;
+	}
+}
+
 static void update_curtime(tm* mTime){
 	snprintf(curtime_buffer, sizeof(curtime_buffer), "%u:%02u", mTime->tm_hour, mTime->tm_min);
 	text_layer_set_text(s_curtime_layer, curtime_buffer);
@@ -129,6 +147,7 @@ static void tick_handler(struct tm* mTime, TimeUnits units_changed){
 	if(menu_state == MENUSTATE_INNER && difftime(curtime,last_interact_time) >= 2){
 		menu_state = MENUSTATE_OUTER;
 		update_action_buttons();
+		update_state_image();
 	}
 	if(difftime(curtime,last_interact_time) >= 2*60){ // quit the app after 2 min
 		window_stack_pop_all(false);
@@ -152,8 +171,13 @@ static void inbox_recieved_callback(DictionaryIterator *iterator, void *context)
 	APP_LOG(APP_LOG_LEVEL_INFO, "Recieved inbox! %p",tmp_tuple);
 	if(tmp_tuple){
 		state = tmp_tuple->value->int8;
-		update_action_buttons(); // state changed, so this might need to change, too
-		APP_LOG(APP_LOG_LEVEL_INFO, "State: %d",state);
+		if(state != STATE_PLAY && menu_state != MENUSTATE_OUTER){
+			menu_state = MENUSTATE_OUTER;
+		}
+		if(menu_state == MENUSTATE_OUTER){
+			update_state_image();
+		}
+		update_action_buttons();
 	}
 	
 	// check for changing artist
@@ -185,11 +209,6 @@ static void inbox_recieved_callback(DictionaryIterator *iterator, void *context)
 		song_pos = tmp_tuple->value->int32;
 		update_song_pos();
 	}
-	
-	if(state != STATE_PLAY && menu_state != MENUSTATE_OUTER){
-		menu_state = MENUSTATE_OUTER;
-		update_action_buttons();
-	}
 }
 static void prv_select_click_handler(ClickRecognizerRef recognizer, void *context) {
 	if(state != STATE_PLAY){
@@ -203,6 +222,9 @@ static void prv_select_click_handler(ClickRecognizerRef recognizer, void *contex
 }
 
 static void prv_select_long_click_handler(ClickRecognizerRef recognizer, void *context){
+	if(state != STATE_PLAY && state != STATE_PAUSE){
+		return;
+	}
 	sendAction(ACTION_STOP);
 	
 	action_bar_layer_set_icon_animated(s_action_bar_layer, BUTTON_ID_SELECT, gbitmap_create_with_resource(RESOURCE_ID_STOP_BUTTON), true);
@@ -219,6 +241,7 @@ static void prv_up_click_handler(ClickRecognizerRef recognizer, void *context) {
 	if(menu_state == MENUSTATE_OUTER){
 		sendAction(ACTION_PREVIOUS);
 	}else{
+		bitmap_layer_set_bitmap(s_state_layer, gbitmap_create_with_resource(RESOURCE_ID_VOL_UP_STATE));
 		sendAction(ACTION_VOL_UP);
 	}
 }
@@ -227,6 +250,7 @@ static void prv_down_click_handler(ClickRecognizerRef recognizer, void *context)
 	if(menu_state == MENUSTATE_OUTER){
 		sendAction(ACTION_NEXT);
 	}else{
+		bitmap_layer_set_bitmap(s_state_layer, gbitmap_create_with_resource(RESOURCE_ID_VOL_DOWN_STATE));
 		sendAction(ACTION_VOL_DOWN);
 	}
 }
@@ -299,6 +323,13 @@ static void prv_window_load(Window *window) {
 	s_progress_layer = layer_create(GRect(12,120,90,4));
 	layer_set_update_proc(s_progress_layer, progress_layer_update_proc);
 	layer_add_child(window_layer,s_progress_layer);
+	
+	s_state_layer = bitmap_layer_create(GRect(12,131,42,24));
+	bitmap_layer_set_alignment(s_state_layer,GAlignTopLeft);
+	bitmap_layer_set_background_color(s_state_layer,GColorLightGray);
+	bitmap_layer_set_compositing_mode(s_state_layer,GCompOpSet);
+	update_state_image();
+	layer_add_child(window_layer,bitmap_layer_get_layer(s_state_layer));
 }
 
 static void prv_window_unload(Window *window) {
@@ -308,6 +339,7 @@ static void prv_window_unload(Window *window) {
 	text_layer_destroy(s_author_layer);
 	text_layer_destroy(s_title_layer);
 	text_layer_destroy(s_curtime_layer);
+	bitmap_layer_destroy(s_state_layer);
 	action_bar_layer_destroy(s_action_bar_layer);
 }
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
