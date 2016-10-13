@@ -135,7 +135,7 @@ static void tick_handler(struct tm* mTime, TimeUnits units_changed){
 	
 	if(state == STATE_PLAY){
 		song_pos++;
-		if(song_pos > song_time){
+		if(song_time && song_pos > song_time){
 			sendAction(ACTION_GETINFO);
 		}
 		update_song_pos();
