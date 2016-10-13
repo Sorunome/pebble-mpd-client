@@ -38,6 +38,12 @@
 		"resources": {
 			"media": [
 				{
+					"type": "png",
+					"name": "ICON",
+					"file": "icon.png",
+					"menuIcon": true
+				},
+				{
 					"type": "bitmap",
 					"name": "PLAY_BUTTON",
 					"file": "play_button.png"
