@@ -19,10 +19,7 @@
 		],
 		"enableMultiJS": true,
 		"targetPlatforms": [
-			"aplite",
-			"basalt",
-			"chalk",
-			"diorite"
+			"basalt"
 		],
 		"watchapp": {
 			"watchface": false
