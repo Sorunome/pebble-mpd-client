@@ -16,9 +16,9 @@ mpdState = {
 	song:0,
 	songid:0,
 	time:'',
-	Artist:'',
-	Title:'',
-	Album:'',
+	artist:'',
+	title:'',
+	album:'',
 	file:''
 };
 
@@ -55,7 +55,7 @@ function mpdRequest(commands,callback){
 				if(s){
 					var lines = s.split('\n'),
 						oldMpdState = JSON.parse(JSON.stringify(mpdState)); // we need to clone it
-					
+					console.log(JSON.stringify(lines));
 					mpdState.Artist = '';
 					mpdState.Title = '';
 					mpdState.Album = '';
@@ -64,26 +64,31 @@ function mpdRequest(commands,callback){
 							http.abort();
 							break;
 						}
-						var matches = lines[i].match(/^(\w+): (.*)/);
-						if(matches && mpdState[matches[1]]!==undefined){
-							mpdState[matches[1]] = mpdState[matches[1]].constructor(matches[2]);
+						var matches = lines[i].match(/^(\w+): (.*)/i);
+						if(matches){
+							var key = matches[1].toLowerCase();
+							if(mpdState[key] !== undefined){
+								mpdState[key] = mpdState[key].constructor(matches[2]);
+							}
 						}
 					}
 					if(!isSameState(oldMpdState)){
 						console.log('sending out new state...');
 						
-						var title = mpdState.Title,
-							artist = mpdState.Artist;
+						var title = mpdState.title,
+							artist = mpdState.artist;
 						if(!title){
 							title = mpdState.file.split('/');
 							title = title[title.length-1].split('.')[0];
 						}
-						if(mpdState.Album && title.length < 28){
-							title += ' – '+mpdState.Album;
+						if(mpdState.album && title.length < 28){
+							title += ' – '+mpdState.album;
 						}
 						if(!artist){
 							artist = 'Unkown';
 						}
+						console.log('Title: '+title);
+						console.log('Artist: '+artist);
 						
 						Pebble.sendAppMessage({
 							state:['play','pause','stop'].indexOf(mpdState.state),
