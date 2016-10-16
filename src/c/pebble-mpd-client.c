@@ -85,8 +85,12 @@ static void progress_layer_update_proc(Layer* layer, GContext* ctx){
 	
 	graphics_context_set_fill_color(ctx, GColorBlack);
 	graphics_fill_rect(ctx, bounds, 1, GCornersAll);
+	#if PBL_BW
+		graphics_context_set_fill_color(ctx, GColorWhite);
+		graphics_fill_rect(ctx, GRect(bounds.origin.x+1, bounds.origin.y+1, bounds.size.w-2, bounds.size.h-2), 0, GCornersAll);
+	#endif
 	
-	graphics_context_set_fill_color(ctx, GColorRed);
+	graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorRed,GColorBlack));
 	graphics_fill_rect(ctx, GRect(bounds.origin.x, bounds.origin.y, progress_bar_width, bounds.size.h), 1, GCornersAll);
 }
 
@@ -272,7 +276,7 @@ static void prv_window_load(Window *window) {
 	time_t time_value = time(NULL);
 	struct tm* mTime = localtime(&time_value);
 
-	window_set_background_color(window,GColorLightGray);
+	window_set_background_color(window,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 
 	s_action_bar_layer = action_bar_layer_create();
 	action_bar_layer_set_click_config_provider(s_action_bar_layer, prv_click_config_provider);
@@ -280,7 +284,7 @@ static void prv_window_load(Window *window) {
 	action_bar_layer_add_to_window(s_action_bar_layer,window);
 	
 	s_curtime_layer = text_layer_create(GRect(0,0,PBL_IF_RECT_ELSE(114,180),14));
-	text_layer_set_background_color(s_curtime_layer,GColorLightGray);
+	text_layer_set_background_color(s_curtime_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_curtime_layer,GColorBlack);
 	update_curtime(mTime);
 	text_layer_set_font(s_curtime_layer,fonts_get_system_font(FONT_KEY_GOTHIC_14));
@@ -288,7 +292,7 @@ static void prv_window_load(Window *window) {
 	layer_add_child(window_layer,text_layer_get_layer(s_curtime_layer));
 	
 	s_title_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(12,30),43,95,52));
-	text_layer_set_background_color(s_title_layer,GColorLightGray);
+	text_layer_set_background_color(s_title_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_title_layer,GColorBlack);
 	text_layer_set_text(s_title_layer,"Loading...");
 	text_layer_set_font(s_title_layer,fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
@@ -296,7 +300,7 @@ static void prv_window_load(Window *window) {
 	layer_add_child(window_layer,text_layer_get_layer(s_title_layer));
 	
 	s_author_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(12,30),25,95,22));
-	text_layer_set_background_color(s_author_layer,GColorLightGray);
+	text_layer_set_background_color(s_author_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_author_layer,GColorBlack);
 	text_layer_set_text(s_author_layer,"");
 	text_layer_set_font(s_author_layer,fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
@@ -304,7 +308,7 @@ static void prv_window_load(Window *window) {
 	layer_add_child(window_layer,text_layer_get_layer(s_author_layer));
 	
 	s_pos_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(12,30),102,49,14));
-	text_layer_set_background_color(s_pos_layer,GColorLightGray);
+	text_layer_set_background_color(s_pos_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_pos_layer,GColorBlack);
 	text_layer_set_text(s_pos_layer,"");
 	text_layer_set_font(s_pos_layer,fonts_get_system_font(FONT_KEY_GOTHIC_14));
@@ -312,7 +316,7 @@ static void prv_window_load(Window *window) {
 	layer_add_child(window_layer,text_layer_get_layer(s_pos_layer));
 	
 	s_time_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(53,71),102,49,14));
-	text_layer_set_background_color(s_time_layer,GColorLightGray);
+	text_layer_set_background_color(s_time_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_time_layer,GColorBlack);
 	text_layer_set_text(s_time_layer,"");
 	text_layer_set_font(s_time_layer,fonts_get_system_font(FONT_KEY_GOTHIC_14));
@@ -325,7 +329,7 @@ static void prv_window_load(Window *window) {
 	
 	s_state_layer = bitmap_layer_create(GRect(PBL_IF_RECT_ELSE(12,30),131,42,24));
 	bitmap_layer_set_alignment(s_state_layer,GAlignTopLeft);
-	bitmap_layer_set_background_color(s_state_layer,GColorLightGray);
+	bitmap_layer_set_background_color(s_state_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	bitmap_layer_set_compositing_mode(s_state_layer,GCompOpSet);
 	update_state_image();
 	layer_add_child(window_layer,bitmap_layer_get_layer(s_state_layer));
