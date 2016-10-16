@@ -1,7 +1,8 @@
 var Clay = require('pebble-clay'),
 	clayConfig = require('./config'),
 	clay = new Clay(clayConfig,null,{autoHandleEvents:false}),
-	mpdUpdateTime = 5;
+	mpdUpdateTime = 5,
+	connectedToMpd = false;
 
 mpdState = {
 	volume:0,
@@ -15,7 +16,8 @@ mpdState = {
 	state:'loading',
 	song:0,
 	songid:0,
-	time:'',
+	time:0,
+	pos:0,
 	artist:'',
 	title:'',
 	album:'',
@@ -35,8 +37,9 @@ function setVol(d){
 
 function isSameState(state){
 	for(var k in state){
-		if(k == 'time'){
-			if(mpdState.state == 'play' && parseInt(state.time.split(':')[0])+mpdUpdateTime != parseInt(mpdState.time.split(':')[0])){
+		if(k == 'pos'){
+			if(mpdState.state == 'play' && state.pos+mpdUpdateTime != mpdState.pos){
+				console.log('wat');
 				return false;
 			}
 		}else if(state[k] != mpdState[k]){
@@ -54,7 +57,8 @@ function mpdRequest(commands,callback){
 				var s = http.response?http.response:http.responseText;
 				if(s){
 					var lines = s.split('\n'),
-						oldMpdState = JSON.parse(JSON.stringify(mpdState)); // we need to clone it
+						oldMpdState = JSON.parse(JSON.stringify(mpdState)), // we need to clone it
+						ignorePos = false;
 					console.log(JSON.stringify(lines));
 					mpdState.Artist = '';
 					mpdState.Title = '';
@@ -65,15 +69,27 @@ function mpdRequest(commands,callback){
 							break;
 						}
 						var matches = lines[i].match(/^(\w+): (.*)/i);
+						console.log(JSON.stringify(matches));
 						if(matches){
 							var key = matches[1].toLowerCase();
 							if(mpdState[key] !== undefined){
-								mpdState[key] = mpdState[key].constructor(matches[2]);
+								if(key == 'time'){
+									if(matches[2].indexOf(':') != -1){
+										var p = matches[2].split(':');
+										mpdState.pos = parseInt(p[0]);
+										matches[2] = p[1];
+										ignorePos = true;
+									}
+								}
+								if((key == 'pos' && !ignorePos) || key != 'pos'){
+									mpdState[key] = mpdState[key].constructor(matches[2]);
+								}
 							}
+							
 						}
 					}
 					if(!isSameState(oldMpdState)){
-						console.log('sending out new state...');
+						console.log('!!!!!sending out new state...!!!!!');
 						
 						var title = mpdState.title,
 							artist = mpdState.artist;
@@ -90,12 +106,13 @@ function mpdRequest(commands,callback){
 						console.log('Title: '+title);
 						console.log('Artist: '+artist);
 						
+						connectedToMpd = true;
 						Pebble.sendAppMessage({
 							state:['play','pause','stop'].indexOf(mpdState.state),
 							artist:artist.substring(0,20),
 							title:title.substring(0,30),
-							time:parseInt(mpdState.time.split(':')[1]),
-							pos:parseInt(mpdState.time.split(':')[0])
+							time:mpdState.time,
+							pos:mpdState.pos
 						});
 					}
 					if(callback){
@@ -103,11 +120,9 @@ function mpdRequest(commands,callback){
 					}
 				}
 			}
-		};
-	http.open('POST','http://'+config.host+':'+config.port,true);
-	http.setRequestHeader('Content-Type','text/plain');
-	http.onreadystatechange = handleReply;
-	http.ontimeout = handleReply;
+		},
+		clearHeaders = ['Content-Type','Connection','Accept','User-Agent','Accept-Language','Accept-Encoding','Content-Length'];
+		
 	if(config.passwd){
 		commands.unshift('password '+config.passwd);
 	}
@@ -116,7 +131,35 @@ function mpdRequest(commands,callback){
 	commands.push('currentsong');
 	commands.push('command_list_end');
 	
-	http.send(commands.join('\n')+'\n');
+	console.log('>> '+JSON.stringify(commands));
+	
+	http.open(commands.join('\n')+'\n','http://'+config.host+':'+config.port,true);
+	
+	for(var i = 0; i < clearHeaders.length; i++){
+		http.setRequestHeader(clearHeaders[i],'');
+	}
+	
+	http.onreadystatechange = handleReply;
+	http.ontimeout = handleReply;
+	http.onloadstart = function(){
+		if(!connectedToMpd){
+			setTimeout(function(){
+				if(!connectedToMpd){
+					connectedToMpd = true;
+					Pebble.sendAppMessage({
+						state:['play','pause','stop'].indexOf('stop'),
+						artist:'',
+						title:'———',
+						time:0,
+						pos:0
+					});
+					http.abort();
+				}
+			},3000);
+		}
+	};
+	
+	http.send('');
 	http.timeout = 2000;
 };
 
