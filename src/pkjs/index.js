@@ -2,7 +2,11 @@ var Clay = require('pebble-clay'),
 	clayConfig = require('./config'),
 	clay = new Clay(clayConfig,null,{autoHandleEvents:false}),
 	mpdUpdateTime = 5,
-	connectedToMpd = false;
+	connectedToMpd = false,
+	timer = false,
+	sock = false,
+	sock_sendBuffer = [],
+	sock_connected = false;
 
 mpdState = {
 	volume:0,
@@ -24,6 +28,26 @@ mpdState = {
 	file:''
 };
 
+function sock_send(o){
+	var s = JSON.stringify(o);
+	console.log('>> '+s)
+	if(sock_connected){
+		sock.send(s);
+	}else{
+		sock_sendBuffer.push(s);
+	}
+}
+
+function pebble_send_status(s){
+	Pebble.sendAppMessage({
+		state:-1,
+		artist:'',
+		title:s,
+		time:0,
+		pos:0
+	});
+}
+
 function setVol(d){
 	d += mpdState.volume;
 	if(d < 0){
@@ -38,7 +62,7 @@ function setVol(d){
 function isSameState(state){
 	for(var k in state){
 		if(k == 'pos'){
-			if(mpdState.state == 'play' && state.pos+mpdUpdateTime != mpdState.pos){
+			if(mpdState.state == 'play' && Math.abs(state.pos+mpdUpdateTime-mpdState.pos) > 1){
 				console.log('wat');
 				return false;
 			}
@@ -49,10 +73,11 @@ function isSameState(state){
 	return true;
 }
 
-function mpdRequest(commands,callback){
+function mpdRequest_direct(commands){
 	var config = JSON.parse(localStorage.getItem('clay-settings')),
 		http = new XMLHttpRequest(),
 		handleReply = function(){
+			console.log('readystatechange '+http.readyState);
 			if(http.readyState >= 3){
 				var s = http.response?http.response:http.responseText;
 				if(s){
@@ -60,9 +85,9 @@ function mpdRequest(commands,callback){
 						oldMpdState = JSON.parse(JSON.stringify(mpdState)), // we need to clone it
 						ignorePos = false;
 					console.log(JSON.stringify(lines));
-					mpdState.Artist = '';
-					mpdState.Title = '';
-					mpdState.Album = '';
+					mpdState.artist = '';
+					mpdState.title = '';
+					mpdState.album = '';
 					for(var i = 0;i < lines.length;i++){
 						if(lines[i] == 'OK'){
 							http.abort();
@@ -115,9 +140,6 @@ function mpdRequest(commands,callback){
 							pos:mpdState.pos
 						});
 					}
-					if(callback){
-						callback();
-					}
 				}
 			}
 		},
@@ -133,8 +155,16 @@ function mpdRequest(commands,callback){
 	
 	console.log('>> '+JSON.stringify(commands));
 	
-	http.open(commands.join('\n')+'\n','http://'+config.host+':'+config.port,true);
-	
+	var s = commands.join('\n')+'\n';
+	//http.open(commands.join('\n')+'\n','http://'+config.host+':'+config.port,true);
+	try{
+		http.open(s,'http://'+config.host+':'+config.port,true);
+		console.log('using http method hack');
+		s = '';
+	}catch(e){
+		console.log('fallback to POST');
+		http.open('POST','http://'+config.host+':'+config.port,true);
+	}
 	for(var i = 0; i < clearHeaders.length; i++){
 		http.setRequestHeader(clearHeaders[i],'');
 	}
@@ -158,20 +188,101 @@ function mpdRequest(commands,callback){
 			},3000);
 		}
 	};
-	
-	http.send('');
+	console.log(s);
+	http.send(s);
 	http.timeout = 2000;
 };
 
+function mpdRequest(commands){
+	var config = JSON.parse(localStorage.getItem('clay-settings'));
+	if(config.proxy_use){
+		if(commands.length == 0){
+			return;
+		}
+		sock_send({
+			'action':'commands',
+			'commands':commands
+		});
+	}else{
+		mpdRequest_direct(commands);
+	}
+}
 
 function getInfo(){
 	mpdRequest([]);
 }
-Pebble.addEventListener('ready',function(){
-	var config = JSON.parse(localStorage.getItem('clay-settings'))
-	Pebble.sendAppMessage({JSReady:config?parseInt(config.app_timeout):120});
+
+function startUpdates(){
+	if(timer){
+		clearInterval(timer);
+		timer = false;
+	}
+	if(sock){
+		sock.close();
+	}
+	var config = JSON.parse(localStorage.getItem('clay-settings'));
+	if(config.proxy_use){
+		console.log('Using proxy');
+		sock_sendBuffer = [];
+		sock_connected = false;
+		sock = new WebSocket('ws://'+config.proxy_host+':6601');
+		sock.onopen = function(e){
+			sock_connected = true;
+			for(var i = 0; i < sock_sendBuffer.length; i++){
+				sock.send(sock_sendBuffer[i]);
+			}
+			sock_sendBuffer = [];
+		};
+		sock.onmessage = function(e){
+			try{
+				var data = JSON.parse(e.data);
+				switch(data.action){
+					case 'state':
+						Pebble.sendAppMessage(data.state);
+						break;
+					case 'invalid_pwd':
+						sock.onclose = function(){};
+						pebble_send_status('Invalid password');
+						break;
+				}
+			}catch(e){
+				console.log('Websocket Recieve error!');
+			}
+		};
+		sock.onclose = function(e){
+			console.log('Websocket closed!');
+			pebble_send_status('Connection closed');
+		};
+		sock.onerror = function(e){
+			console.log('Websocket error!');
+			pebble_send_status('Connection error');
+		};
+		sock_send({
+			'action':'ident',
+			'passwd':config.proxy_passwd
+		});
+		sock_send({
+			'action':'mpd_server',
+			'host':config.host,
+			'port':parseInt(config.port),
+			'passwd':config.passwd
+		});
+	}else{
+		console.log('Attempting direct connection');
+		timer = setInterval(getInfo,mpdUpdateTime*1000);
+	}
 	getInfo();
-	setInterval(getInfo,mpdUpdateTime*1000);
+}
+
+
+Pebble.addEventListener('ready',function(){
+	var config = JSON.parse(localStorage.getItem('clay-settings'));
+	if(config){
+		Pebble.sendAppMessage({JSReady:config?parseInt(config.app_timeout):120});
+		startUpdates();
+	}else{
+		pebble_send_status('Configure via app');
+	}
 });
 Pebble.addEventListener('showConfiguration',function(e){
 	Pebble.openURL(clay.generateUrl());
@@ -192,7 +303,7 @@ Pebble.addEventListener('webviewclosed',function(e){
 	});
 	Pebble.sendAppMessage({JSReady:parseInt(config.app_timeout)});
 	localStorage.setItem('clay-settings', JSON.stringify(config));
-	getInfo();
+	startUpdates();
 });
 Pebble.addEventListener('appmessage',function(e){
 	switch(e.payload[0]){

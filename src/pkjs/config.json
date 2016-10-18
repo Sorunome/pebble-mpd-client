@@ -64,6 +64,40 @@
 		]
 	},
 	{
+		"type": "section",
+		"items": [
+			{
+				"type": "heading",
+				"defaultValue": "MPD Proxy configuration"
+			},
+			{
+				"type": "toggle",
+				"messageKey": "proxy_use",
+				"label": "Use Proxy",
+				"defaultValue": false
+			},
+			{
+				"type": "input",
+				"messageKey": "proxy_host",
+				"label": "Host",
+				"defaultValue": "",
+				"attributes": {
+					"placeholder": "eg: 192.168.1.42"
+				}
+			},
+			{
+				"type": "input",
+				"messageKey": "proxy_passwd",
+				"defaultValue": "",
+				"label": "Password",
+				"attributes": {
+					"type": "password"
+				},
+				"description": "Leave blank for no password"
+			}
+		]
+	},
+	{
 		"type": "submit",
 		"defaultValue": "Save Settings"
 	}
