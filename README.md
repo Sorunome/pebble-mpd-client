@@ -3,7 +3,7 @@ Pebble MPD Client
 
 This is an MPD client for the pebble!
 
-![Pebble MPD Client](https://raw.githubusercontent.com/Sorunome/pebble-mpd-client/master/screenshot.png)
+![Pebble MPD Client](https://raw.githubusercontent.com/Sorunome/pebble-mpd-client/master/screenshots/basalt.png)
 
 Supported platforms are `aplite`,`basalt`,`chalk`,`diorite` and `emery` so basically every pebble platform available! If you want support for any other platform or found any bug just create an issue.
 
