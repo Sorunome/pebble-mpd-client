@@ -17,9 +17,11 @@ You do _NOT_ have to run the python proxy if you apply to one of the following:
 * have your pebble connected to IOS
 
 So, how do you run said python proxy?
-1. copy all files from [here](https://github.com/Sorunome/pebble-mpd-client/blob/master/server/config.json) to a directory on your server
-2. edit `config.json` with the server IP and (optionally) a password (Password is recommended!)
-3. run `python3 pebble_mpd_proxy.py` . It is recommended to run the proxy in e.g. a different screen so that you can close the connection to your server after starting the proxy. For that:
+
+1. `sudo pip3 install python-mpd2`
+2. copy all files from [here](https://github.com/Sorunome/pebble-mpd-client/blob/master/server/) to a directory on your server
+3. edit `config.json` with the server IP and (optionally) a password (Password is recommended!)
+4. run `python3 pebble_mpd_proxy.py` . It is recommended to run the proxy in e.g. a different screen so that you can close the connection to your server after starting the proxy. For that:
  - `screen -S pebble_mpd_proxy`
  - `python3 pebble_mpd_proxy.py`
  - exiting: hitting `Ctrl+a` and then `d`
