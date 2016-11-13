@@ -246,7 +246,12 @@ class WebSocketHandler(server.ServerHandler):
 			except:
 				traceback.print_exc()
 	def on_message(self,m):
-		print(m)
+		if 'passwd' in m:
+			p = dict(m)
+			p['passwd'] = '--snip--'
+			print(p)
+		else:
+			print(m)
 		try:
 			if m['action'] == 'ident':
 				if self.ident:
@@ -266,19 +271,26 @@ class WebSocketHandler(server.ServerHandler):
 					self.mpd_connect()
 				elif m['action'] == 'commands':
 					self.skip_update = True
-					self.mpd._write_line('command_list_ok_begin')
+					self.mpd.command_list_ok_begin()
 					for l in m['commands']:
-						self.mpd._write_line(l)
-					self.mpd._write_line('command_list_end')
-					
-					# read the lines
-					while True:
-						line = self.mpd._rfile.readline().rstrip("\n")
-						if not line:
-							break
-						if line == 'OK':
-							break
-					self.mpd._command_list = None
+						p = l.lower().split(' ')
+						if p[0] == 'pause':
+							self.mpd.pause(int(p[1]))
+						elif p[0] == 'play':
+							self.mpd.play()
+						elif p[0] == 'stop':
+							self.mpd.stop()
+						elif p[0] == 'previous':
+							self.mpd.previous()
+						elif p[0] == 'next':
+							self.mpd.next()
+						elif p[0] == 'setvol':
+							self.mpd.setvol(int(p[1]))
+					try:
+						self.mpd.command_list_end()
+					except:
+						traceback.print_exc()
+						pass
 					
 					self.mpd_update()
 					self.skip_update = False
