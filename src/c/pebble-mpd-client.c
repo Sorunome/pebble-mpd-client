@@ -283,7 +283,7 @@ static void prv_window_load(Window *window) {
 	update_action_buttons();
 	action_bar_layer_add_to_window(s_action_bar_layer,window);
 	
-	s_curtime_layer = text_layer_create(GRect(0,0,PBL_IF_RECT_ELSE(114,180),14));
+	s_curtime_layer = text_layer_create(GRect(0,0,PBL_IF_RECT_ELSE(PBL_DISPLAY_WIDTH-34,180),14));
 	text_layer_set_background_color(s_curtime_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_curtime_layer,GColorBlack);
 	update_curtime(mTime);
@@ -291,7 +291,7 @@ static void prv_window_load(Window *window) {
 	text_layer_set_text_alignment(s_curtime_layer,GTextAlignmentCenter);
 	layer_add_child(window_layer,text_layer_get_layer(s_curtime_layer));
 	
-	s_title_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(12,30),43,95,52));
+	s_title_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(12,30),43,PBL_IF_RECT_ELSE(PBL_DISPLAY_WIDTH-15-34,95),52));
 	text_layer_set_background_color(s_title_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_title_layer,GColorBlack);
 	text_layer_set_text(s_title_layer,"Loading...");
@@ -299,7 +299,7 @@ static void prv_window_load(Window *window) {
 	text_layer_set_text_alignment(s_title_layer,GTextAlignmentLeft);
 	layer_add_child(window_layer,text_layer_get_layer(s_title_layer));
 	
-	s_author_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(12,30),25,95,22));
+	s_author_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(12,30),25,PBL_IF_RECT_ELSE(PBL_DISPLAY_WIDTH-15-34,95),22));
 	text_layer_set_background_color(s_author_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_author_layer,GColorBlack);
 	text_layer_set_text(s_author_layer,"");
@@ -315,7 +315,7 @@ static void prv_window_load(Window *window) {
 	text_layer_set_text_alignment(s_pos_layer,GTextAlignmentLeft);
 	layer_add_child(window_layer,text_layer_get_layer(s_pos_layer));
 	
-	s_time_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(53,71),102,49,14));
+	s_time_layer = text_layer_create(GRect(PBL_IF_RECT_ELSE(PBL_DISPLAY_WIDTH-91,71),102,49,14));
 	text_layer_set_background_color(s_time_layer,PBL_IF_COLOR_ELSE(GColorLightGray,GColorWhite));
 	text_layer_set_text_color(s_time_layer,GColorBlack);
 	text_layer_set_text(s_time_layer,"");
@@ -323,7 +323,7 @@ static void prv_window_load(Window *window) {
 	text_layer_set_text_alignment(s_time_layer,GTextAlignmentRight);
 	layer_add_child(window_layer,text_layer_get_layer(s_time_layer));
 	
-	s_progress_layer = layer_create(GRect(PBL_IF_RECT_ELSE(12,30),120,90,4));
+	s_progress_layer = layer_create(GRect(PBL_IF_RECT_ELSE(12,30),120,PBL_IF_RECT_ELSE(PBL_DISPLAY_WIDTH-54,90),4));
 	layer_set_update_proc(s_progress_layer, progress_layer_update_proc);
 	layer_add_child(window_layer,s_progress_layer);
 	
