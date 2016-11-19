@@ -77,10 +77,6 @@ function isSameState(state){
 	return true;
 }
 
-function mpdSendState(state){
-	var a;
-}
-
 function mpdRequest_direct(commands){
 	var config = JSON.parse(localStorage.getItem('clay-settings')),
 		http = new XMLHttpRequest(),
