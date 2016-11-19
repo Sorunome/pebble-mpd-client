@@ -50,12 +50,16 @@ function pebble_send_status(s){
 
 function setVol(d){
 	d += mpdState.volume;
+	
 	if(d < 0){
+		mpdState.volume = 0;
 		return 0;
 	}
 	if(d > 100){
+		mpdState.volume = 100;
 		return 100;
 	}
+	mpdState.volume = d;
 	return d;
 }
 
@@ -71,6 +75,10 @@ function isSameState(state){
 		}
 	}
 	return true;
+}
+
+function mpdSendState(state){
+	var a;
 }
 
 function mpdRequest_direct(commands){
@@ -235,9 +243,13 @@ function startUpdates(){
 		};
 		sock.onmessage = function(e){
 			try{
+				console.log('NEW MESSAGE');
+				console.log(e.data);
 				var data = JSON.parse(e.data);
 				switch(data.action){
 					case 'state':
+						console.log(JSON.stringify(data.state));
+						mpdState.volume = data.state.volume;
 						Pebble.sendAppMessage(data.state);
 						break;
 					case 'invalid_pwd':

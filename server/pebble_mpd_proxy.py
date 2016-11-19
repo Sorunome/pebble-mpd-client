@@ -240,7 +240,8 @@ class WebSocketHandler(server.ServerHandler):
 							'artist':artist[0:20],
 							'title':title[0:30],
 							'time':self.mpdState['time'],
-							'pos':self.mpdState['pos']
+							'pos':self.mpdState['pos'],
+							'volume':self.mpdState['volume']
 						}
 					}))
 			except:
