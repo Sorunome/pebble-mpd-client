@@ -32,3 +32,7 @@ I you are interested as to why such a proxy is needed, head over [here](https://
 Usage
 -----
 What each button always does is shown on the right, you can stop by hitting the center button for a long time.
+
+Donate
+------
+Do you like this app a lot? Perhaps you'd want to [donate](https://www.sorunome.de/donate) something! 

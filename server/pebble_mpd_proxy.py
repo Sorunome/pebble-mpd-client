@@ -168,7 +168,12 @@ class WebSocketHandler(server.WebSocketHandler):
 					self.mpd_connect()
 				elif m['action'] == 'commands':
 					self.skip_update = True
-					self.mpd.command_list_ok_begin()
+					try:
+						self.mpd.command_list_ok_begin()
+					except:
+						self.mpd.command_list_end()
+						self.mpd.command_list_ok_begin()
+						pass
 					for l in m['commands']:
 						p = l.lower().split(' ')
 						if p[0] == 'pause':
