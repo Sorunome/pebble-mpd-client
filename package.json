@@ -34,7 +34,8 @@
 			"artist",
 			"title",
 			"time",
-			"pos"
+			"pos",
+			"volume"
 		],
 		"resources": {
 			"media": [

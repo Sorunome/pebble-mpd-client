@@ -246,6 +246,7 @@ function startUpdates(){
 					case 'state':
 						console.log(JSON.stringify(data.state));
 						mpdState.volume = data.state.volume;
+						mpdState.state = ['play','pause','stop'][data.state.state]
 						Pebble.sendAppMessage(data.state);
 						break;
 					case 'invalid_pwd':
@@ -319,7 +320,11 @@ Pebble.addEventListener('appmessage',function(e){
 			mpdRequest(['pause 1']);
 			break;
 		case 1: // play
-			mpdRequest(['pause 0','play']);
+			if (mpdState.state === 'pause') {
+				mpdRequest(['pause 0']);
+			} else {
+				mpdRequest(['pause 0','play']);
+			}
 			break;
 		case 2: // stop
 			mpdRequest(['stop']);

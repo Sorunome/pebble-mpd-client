@@ -30,14 +30,14 @@ static ActionBarLayer *s_action_bar_layer;
 char artist_buffer[21];
 char title_buffer[31];
 char time_buffer[10];
-char pos_buffer[10];
+char pos_buffer[11];
 char curtime_buffer[6];
 
 
 bool pause = true;
 int8_t state = STATE_LOADING;
 uint8_t menu_state = MENUSTATE_OUTER;
-time_t last_interact_time;
+time_t last_interact_time = 0;
 
 uint32_t song_time = 0;
 uint32_t song_pos = 0;
@@ -100,10 +100,10 @@ static void get_time_string(char* buffer,uint32_t ts){
 	if(min >= 60){
 		uint16_t hour = min / 60;
 		min %= 60;
-		snprintf(buffer, 10, "%u:%02u:%02u", hour, min, sec);
+		snprintf(buffer, 11, "%u:%02u:%02u", hour, min, sec);
 		return;
 	}
-	snprintf(buffer, 10, "%u:%02u", min, sec);
+	snprintf(buffer, 11, "%u:%02u", min, sec);
 }
 
 static void update_song_pos(void){
@@ -149,13 +149,17 @@ static void tick_handler(struct tm* mTime, TimeUnits units_changed){
 		update_curtime(mTime);
 	}
 	
-	if(menu_state == MENUSTATE_INNER && difftime(curtime,last_interact_time) >= 2){
-		menu_state = MENUSTATE_OUTER;
-		update_action_buttons();
-		update_state_image();
-	}
-	if(app_timeout && difftime(curtime,last_interact_time) >= app_timeout){ // quit the app after configured time
-		window_stack_pop_all(false);
+	if(last_interact_time){
+		int diff_time = (int)curtime - (int)last_interact_time;
+		if(menu_state == MENUSTATE_INNER && diff_time >= 2){
+			menu_state = MENUSTATE_OUTER;
+			update_action_buttons();
+			update_state_image();
+		}
+		if(app_timeout && diff_time >= app_timeout){ // quit the app after configured time
+			APP_LOG(APP_LOG_LEVEL_INFO, "Timeout reached, quitting app...");
+			window_stack_pop_all(false);
+		}
 	}
 }
 
@@ -232,7 +236,7 @@ static void prv_select_long_click_handler(ClickRecognizerRef recognizer, void *c
 	
 	action_bar_layer_set_icon_animated(s_action_bar_layer, BUTTON_ID_SELECT, gbitmap_create_with_resource(RESOURCE_ID_STOP_BUTTON), true);
 	
-	static const uint32_t const segments[] = { 100 };
+	static const uint32_t segments[] = { 100 };
 	VibePattern pat = {
 		.durations = segments,
 		.num_segments = ARRAY_LENGTH(segments),
